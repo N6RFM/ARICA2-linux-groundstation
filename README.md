@@ -106,6 +106,11 @@ decodes and displays them as `SRC>DST:message`.
   the original app relied on textbox `MaxLength` at the UI layer, which
   isn't visible from the disassembled logic.
 
+## Authors
+
+- N6RFM
+- Claude (Anthropic) — reverse engineering, Linux port, and documentation
+
 ## License
 
 MIT — see [LICENSE](LICENSE). This is an independent reimplementation, not
