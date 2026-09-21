@@ -31,15 +31,27 @@ match, not a guess.
 
 ## Requirements
 
-- Python 3 with Tkinter (ships with virtually every desktop Linux distro's
-  Python — no pip installs needed for the GUI itself)
-- [Direwolf](https://github.com/wb2osz/direwolf) as the software TNC/modem
+```
+sudo apt install python3 python3-tk direwolf grig libhamlib-utils pavucontrol
+```
+
+- **`python3-tk`** — Tkinter isn't bundled with the `python3` package on
+  Debian/Ubuntu (unlike Windows/Mac); the GUI needs this explicitly or it
+  fails with `ModuleNotFoundError: No module named 'tkinter'`.
+- **`direwolf`** — the software TNC/modem that actually transmits/receives
+  over the radio.
+- **`grig`** and **`libhamlib-utils`** (provides `rigctld`) — CAT control;
+  optional if you're not using CAT for PTT or Doppler.
+- **`pavucontrol`** — for checking/fixing audio routing and capture source;
+  optional but useful for diagnosing audio issues.
+
+Also needed, not installed via `apt`:
+
 - A radio capable of 4800 baud G3RUH FM on ARICA-2's downlink/uplink
   frequency, with a way to get flat (non-mic/speaker) audio in/out and a
-  PTT line
+  PTT line.
 - Optional but recommended: [Gpredict](http://gpredict.oz9aec.net/) for
-  Doppler correction and antenna tracking, and `hamlib`'s `rigctld` for
-  CAT control
+  Doppler correction and antenna tracking.
 
 ## Quick start
 
