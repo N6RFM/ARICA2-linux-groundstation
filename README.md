@@ -1,4 +1,4 @@
-# ARICA-2 Linux Ground Station
+# ARICA2-linux-groundstation
 
 A native Linux toolkit for working [ARICA-2](https://db.satnogs.org/satellite/IFKU-9201-2588-0809-6295)'s
 amateur "message box" mission — no Windows, no Wine.
