@@ -193,7 +193,7 @@ class App(tk.Tk):
         self.message_entry = ttk.Entry(msg_frame, textvariable=self.message_var, width=10)
         self.message_entry.grid(row=3, column=1, sticky="w")
 
-        ttk.Label(msg_frame, text="Key-up time (sec):").grid(row=4, column=0, sticky="e")
+        ttk.Label(msg_frame, text="TX delay (sec):").grid(row=4, column=0, sticky="e")
         self.txdelay_var = tk.DoubleVar(value=0.3)
         self.txdelay_spinbox = ttk.Spinbox(
             msg_frame, textvariable=self.txdelay_var,
@@ -203,7 +203,7 @@ class App(tk.Tk):
 
         self.txdelay_override_var = tk.BooleanVar(value=False)
         self.txdelay_override_check = ttk.Checkbutton(
-            msg_frame, text="Override (send this value to Direwolf)",
+            msg_frame, text="Override TXDELAY (send this value to Direwolf)",
             variable=self.txdelay_override_var,
             command=self._update_txdelay_state
         )

@@ -22,13 +22,13 @@ match, not a guess.
   20-slot mailbox commands (Download / Upload / Confirm / Parrot) over a
   KISS TCP connection to [Direwolf](https://github.com/wb2osz/direwolf),
   and decodes received AX.25 UI frames for display. Includes an optional,
-  unchecked-by-default **key-up time override**: when enabled, Direwolf
+  unchecked-by-default **TXDELAY override**: when enabled, Direwolf
   asserts PTT, waits this long, and only then starts sending the actual
   frame — giving the radio time to key up cleanly and the receiver's
   squelch/AGC/PLL time to settle before real data arrives, instead of
   clipping the start of the transmission. This is sent to Direwolf as a
   KISS TXDELAY command right before each message (in 10ms units, e.g.
-  30 = 300ms). If you always want the same key-up time, leave the
+  30 = 300ms). If you always want the same TX delay, leave the
   override unchecked and just set `TXDELAY` once in `direwolf.conf`
   instead — the override exists for adjusting it live, per transmission,
   without restarting Direwolf. **Note:** there's no value in the
