@@ -1,0 +1,15 @@
+# Local station config - contains your callsign/hardware paths
+direwolf.conf
+
+# Direwolf logs
+*.log
+ARICA-2Log*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor/OS cruft
+.vscode/
+*.swp
+.DS_Store

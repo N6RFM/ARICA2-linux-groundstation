@@ -1,0 +1,29 @@
+# Direwolf config for ARICA-2 message-box uplink/downlink.
+# Copy to direwolf.conf and adjust for your station.
+
+# Audio device - find your card number with `arecord -l`.
+# Working examples:
+#   USB audio interface:      ADEVICE plughw:1,0
+#   Built-in sound card:      ADEVICE plughw:0,0   (or: ADEVICE default
+#                              if PipeWire/PulseAudio holds the raw device)
+ADEVICE plughw:1,0
+
+MYCALL YOURCALL-1
+
+# 4800 baud G3RUH is the modem ARICA-2's ground segment expects.
+MODEM 4800 G3RUH
+
+# PTT - pick ONE of the following depending on your hardware:
+#
+#   FTDI-based USB PTT keyer via RTS (confirmed working):
+PTT /dev/ttyUSB3 RTS
+#
+#   Invert polarity if PTT triggers backwards:
+# PTT /dev/ttyUSB3 -RTS
+#
+#   CM108/CM119-based USB sound fob GPIO:
+# PTT CM108 /dev/hidraw0
+#
+#   PTT via CAT through rigctld (e.g. when using a built-in sound card
+#   with no PTT signaling of its own):
+# PTT RIG 2 localhost:4532
