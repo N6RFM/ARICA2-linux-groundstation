@@ -195,13 +195,23 @@ class App(tk.Tk):
 
         ttk.Label(msg_frame, text="Key-up time (sec):").grid(row=4, column=0, sticky="e")
         self.txdelay_var = tk.DoubleVar(value=0.3)
-        ttk.Spinbox(
+        self.txdelay_spinbox = ttk.Spinbox(
             msg_frame, textvariable=self.txdelay_var,
             from_=0.0, to=2.55, increment=0.05, width=8
-        ).grid(row=4, column=1, sticky="w")
+        )
+        self.txdelay_spinbox.grid(row=4, column=1, sticky="w")
+
+        self.txdelay_override_var = tk.BooleanVar(value=False)
+        self.txdelay_override_check = ttk.Checkbutton(
+            msg_frame, text="Override (send this value to Direwolf)",
+            variable=self.txdelay_override_var,
+            command=self._update_txdelay_state
+        )
+        self.txdelay_override_check.grid(row=5, column=0, columnspan=2, sticky="w")
+        self._update_txdelay_state()
 
         self.transmit_btn = ttk.Button(msg_frame, text="Transmit", command=self._transmit)
-        self.transmit_btn.grid(row=5, column=0, columnspan=2, pady=6)
+        self.transmit_btn.grid(row=6, column=0, columnspan=2, pady=6)
 
         self._update_field_state()
 
@@ -224,6 +234,16 @@ class App(tk.Tk):
         t = self.type_var.get()
         self.msgid_combo.configure(state="readonly" if t == "Download" else "disabled")
         self.message_entry.configure(state="normal" if t in ("Upload", "Parrot") else "disabled")
+
+    def _update_txdelay_state(self):
+        # Only enable the spinbox - and only ever send the KISS TXDELAY
+        # command at all - when the operator has explicitly opted in to
+        # overriding Direwolf's own configured value. Left unchecked,
+        # Direwolf's static TXDELAY line in direwolf.conf applies as-is;
+        # there is no "leave it alone" value to send instead, since any
+        # value sent (including 0) explicitly sets the delay to that.
+        state = "normal" if self.txdelay_override_var.get() else "disabled"
+        self.txdelay_spinbox.configure(state=state)
 
     def _toggle_connect(self):
         if self.connect_btn["text"] == "Connect":
@@ -307,13 +327,13 @@ class App(tk.Tk):
         except (tk.TclError, ValueError):
             keyup_seconds = 0.3
 
-        delay_frame = build_txdelay_frame(keyup_seconds)
         frame = build_frame(cmd_type, callsign, message, msg_id)
         try:
-            # Set TXDELAY first, over the same connected socket, then send
-            # the message frame - Direwolf applies the new value to the
-            # very next transmission on this port.
-            self.client_sock.sendall(delay_frame)
+            if self.txdelay_override_var.get():
+                # Explicit opt-in only - sending this always sets an exact
+                # value (0 included), so it's never sent unless the
+                # operator asked to override direwolf.conf's own setting.
+                self.client_sock.sendall(build_txdelay_frame(keyup_seconds))
             self.client_sock.sendall(frame)
         except Exception as exc:
             messagebox.showerror("Transmit failed", str(exc))

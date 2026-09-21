@@ -21,10 +21,20 @@ match, not a guess.
 - **`arica2_message.py`** — a Tkinter GUI that builds and sends the same
   20-slot mailbox commands (Download / Upload / Confirm / Parrot) over a
   KISS TCP connection to [Direwolf](https://github.com/wb2osz/direwolf),
-  and decodes received AX.25 UI frames for display. Includes a
-  user-adjustable **key-up time** control (sent to Direwolf as a KISS
-  TXDELAY command right before each message, so Direwolf — the thing that
-  actually owns PTT and modem timing — is what enforces it).
+  and decodes received AX.25 UI frames for display. Includes an optional,
+  unchecked-by-default **key-up time override**: when enabled, Direwolf
+  asserts PTT, waits this long, and only then starts sending the actual
+  frame — giving the radio time to key up cleanly and the receiver's
+  squelch/AGC/PLL time to settle before real data arrives, instead of
+  clipping the start of the transmission. This is sent to Direwolf as a
+  KISS TXDELAY command right before each message (in 10ms units, e.g.
+  30 = 300ms). If you always want the same key-up time, leave the
+  override unchecked and just set `TXDELAY` once in `direwolf.conf`
+  instead — the override exists for adjusting it live, per transmission,
+  without restarting Direwolf. **Note:** there's no value in the
+  spinbox that means "leave Direwolf's own setting alone" — sending
+  the command at all (0 included) explicitly overrides it, so 0 would
+  mean *zero* delay, not "unchanged."
 - **`direwolf.conf.example`** — a template Direwolf config covering the
   audio device and PTT options that come up in practice (USB audio +
   FTDI RTS keyer, built-in sound card + CAT PTT, CM108 sound fob).
