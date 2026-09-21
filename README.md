@@ -109,6 +109,16 @@ Downlink frames (telemetry, message content, ACKs) are standard AX.25 UI
 frames with normally shifted (`<<1`) callsigns — `arica2_message.py`
 decodes and displays them as `SRC>DST:message`.
 
+**Only Download encodes a slot ID.** Upload, Confirm, and Parrot each use a
+fixed byte 5 value with byte 6 left at `0x00` — none of them has any code
+path that folds a slot number into the frame. This means there's no way to
+target a specific slot on Upload; the satellite itself must be choosing
+which of the 20 slots to store an Upload into, and any "message renewed at
+[slot ID]"-style response is the satellite reporting that assignment back
+to you after the fact, not something you can request going in. This is why
+`arica2_message.py` greys out the Message ID field for every command type
+except Download — there's no slot field for it to populate.
+
 ## Known limitations
 
 - No KISS byte-escaping (`0xDB`) handling on receive, matching the
