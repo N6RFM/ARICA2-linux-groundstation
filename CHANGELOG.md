@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed:** `kiss_frame_dump.py` was documented in the README since 1.1.0
+  but had been missed from the actual pushed repo. No functional change
+  to the tool itself, just adding the file that should have been there
+  all along.
+
 ## 1.2.0
 
 - **Confirmed:** downlink addressing is a hybrid format, not the
