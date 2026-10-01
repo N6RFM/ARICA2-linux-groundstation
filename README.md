@@ -42,6 +42,11 @@ match, not a guess.
   to Direwolf's KISS port and prints the complete raw hex of every frame
   it sees, for capturing exact bytes when working out frame structure
   (see the note on downlink decoding below).
+- **`satnogs-tools/`** — forward received ARICA-2 downlink frames to SatNOGS
+  DB (via the SiDS protocol), without forwarding your own uplink
+  transmissions. Two tools: one for a live Direwolf KISS feed, one for
+  ingesting a decoder's text log file after the fact. See
+  [satnogs-tools/README.md](satnogs-tools/README.md) for full usage.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
@@ -161,6 +166,34 @@ which of the 20 slots to store an Upload into, and any "message renewed at
 to you after the fact, not something you can request going in. This is why
 `arica2_message_v1.2.0.py` greys out the Message ID field for every command type
 except Download — there's no slot field for it to populate.
+
+## SatNOGS frame forwarding
+
+`satnogs-tools/` contains two scripts for submitting received ARICA-2
+downlink frames to SatNOGS DB, so they show up on the
+[ARICA-2 dashboard](https://dashboard.satnogs.org/d/arica-2) alongside
+other stations' receptions:
+
+- **`arica2_satnogs_forwarder.py`** — connects to Direwolf's live KISS
+  TCP feed and forwards frames in real time.
+- **`arica2_log_to_satnogs.py`** — ingests a decoder's text log file
+  (handles both cleanly decoded `SRC>DST:payload` lines and raw hex
+  dump fallback lines), converting local timestamps to UTC.
+
+Both filter frames by AX.25 source callsign, so your own uplink is
+never forwarded. Key facts baked in as defaults: submit with NORAD ID
+`98329` (SatNOGS DB's catalog ID for ARICA-2 — distinct from its real/
+followed NORAD ID 68796, which is only used for TLE propagation), and
+filter on satellite callsign `JS1YSD`.
+
+```bash
+python3 satnogs-tools/arica2_log_to_satnogs.py \
+    --log-file your.log --norad-id 98329 --source-callsign YOUR_CALL \
+    --tz-name America/New_York --dry-run -v
+```
+
+See [satnogs-tools/README.md](satnogs-tools/README.md) for full usage,
+and run either script with `--help` for all options.
 
 ## Known limitations
 
