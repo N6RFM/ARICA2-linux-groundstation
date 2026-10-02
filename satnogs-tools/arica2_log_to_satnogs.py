@@ -119,8 +119,17 @@ def extract_ax25_from_kiss_dump(hex_str: str):
     return payload
 
 
-def encode_ax25_addr(callsign: str, last: bool) -> bytes:
-    """Encode one AX.25 address field (callsign[-ssid]) as 7 bytes."""
+def safe_ascii(data: bytes) -> str:
+    """Render bytes as text, replacing non-printable bytes with '.'."""
+    return "".join(chr(b) if 32 <= b < 127 else "." for b in data)
+
+
+def encode_arica2_addr(callsign: str, width: int, include_ssid: bool) -> bytes:
+    """Encode a callsign as one of ARICA-2's hybrid address fields:
+    `width` raw ASCII bytes (AX.25 <<1 shift, space-padded), optionally
+    followed by a standard AX.25 SSID byte. See parse_arica2_frame for
+    the full confirmed layout this matches.
+    """
     call = callsign.upper()
     ssid = 0
     if "-" in call:
@@ -129,51 +138,44 @@ def encode_ax25_addr(callsign: str, last: bool) -> bytes:
             ssid = int(ssid_str)
         except ValueError:
             ssid = 0
-    call = call.ljust(6)[:6]
+    call = call.ljust(width)[:width]
     addr = bytes((ord(c) << 1) & 0xFF for c in call)
-    ssid_byte = 0x60 | ((ssid & 0x0F) << 1) | (0x01 if last else 0x00)
-    return addr + bytes([ssid_byte])
+    if include_ssid:
+        ssid_byte = 0x60 | ((ssid & 0x0F) << 1) | 0x01
+        return addr + bytes([ssid_byte])
+    return addr
 
 
 def build_synthetic_ax25(src: str, dst: str, payload_text: str) -> bytes:
-    """Reconstruct a standard AX.25 UI frame from decoded text fields.
-    Not bit-identical to the original over-the-air frame (no FCS, and
-    any digipeater path is lost), but structurally valid for standard
-    AX.25 decoders.
+    """Reconstruct ARICA-2's actual hybrid frame layout (see the main
+    repo README's "Frame format" section) from decoded text fields --
+    NOT a generic standard-AX.25 UI frame. A 5-byte destination (no
+    SSID byte), a 6-byte source plus a standard AX.25 SSID byte for the
+    source only, then Control (0x03) and PID (0xF0), then the info
+    text. Not bit-identical to the original over-the-air frame (no
+    original FCS), but structurally matches what ARICA-2 actually
+    transmits, unlike a generic 7+7 standard-AX.25 frame would.
     """
-    dest_addr = encode_ax25_addr(dst, last=False)
-    src_addr = encode_ax25_addr(src, last=True)
+    dest_addr = encode_arica2_addr(dst, width=5, include_ssid=False)
+    src_addr = encode_arica2_addr(src, width=6, include_ssid=True)
     control = bytes([0x03])  # UI frame
     pid = bytes([0xF0])  # no layer 3 protocol
     info = payload_text.encode("utf-8", errors="replace")
     return dest_addr + src_addr + control + pid + info
 
 
-def safe_ascii(data: bytes) -> str:
-    """Render bytes as text, replacing non-printable bytes with '.'."""
-    return "".join(chr(b) if 32 <= b < 127 else "." for b in data)
-
-
-def find_ax25_info_start(ax25: bytes) -> int:
-    """Return the byte offset where the AX.25 info field begins, after
-    skipping all address fields (destination, source, and any
-    repeaters, terminated by an address byte with its extension bit
-    set), the control byte, and the PID byte (present on UI and I
-    frames, not on S frames)."""
-    i = 0
-    n = len(ax25)
-    while i + 7 <= n:
-        last = bool(ax25[i + 6] & 0x01)
-        i += 7
-        if last:
-            break
-    if i >= n:
-        return i
-    control = ax25[i]
-    i += 1
-    if (control & 0x03) != 0x01:  # not an S-frame -> PID byte follows
-        i += 1
-    return min(i, n)
+def parse_arica2_frame(ax25: bytes):
+    """Parse ARICA-2's confirmed hybrid frame layout -- NOT standard
+    AX.25 addressing (see build_synthetic_ax25 / the main repo README's
+    "Frame format" section for the full layout). Returns
+    (dest_call, src_call, info_text), or None if too short.
+    """
+    if len(ax25) < 14:
+        return None
+    dest_call = "".join(chr(b >> 1) for b in ax25[0:5]).strip(" \x00")
+    src_call = "".join(chr(b >> 1) for b in ax25[5:11]).strip(" \x00")
+    info_text = safe_ascii(ax25[14:])
+    return dest_call, src_call, info_text
 
 
 def parse_local_to_utc(ts_str: str, tzinfo: datetime.tzinfo) -> str:
@@ -239,14 +241,14 @@ def parse_log_line(line: str):
             ax25 = extract_ax25_from_kiss_dump(m.group("hex"))
         except ValueError:
             return None
-        if ax25 is None or len(ax25) < 14:
+        if ax25 is None:
             return None
-        # Source address is bytes 7:14 of the AX.25 header.
-        src_field = ax25[7:14]
-        src_call = "".join(chr(b >> 1) for b in src_field[:6]).strip().upper()
-        info_start = find_ax25_info_start(ax25)
-        decoded = safe_ascii(ax25[info_start:])
-        return m.group("ts"), src_call, ax25, False, decoded
+        parsed_frame = parse_arica2_frame(ax25)
+        if parsed_frame is None:
+            return None
+        dest_call, src_call, info_text = parsed_frame
+        decoded = f"{src_call}>{dest_call}:{info_text}"
+        return m.group("ts"), src_call.upper(), ax25, False, decoded
 
     return None
 

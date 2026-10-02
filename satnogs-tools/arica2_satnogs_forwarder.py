@@ -118,24 +118,36 @@ def read_kiss_frames(sock: socket.socket):
                 buf.append(b)
 
 
-def parse_ax25_addr(field: bytes):
-    """Parse one 7-byte AX.25 address field -> (callsign, ssid, is_last)."""
-    call = "".join(chr(b >> 1) for b in field[:6]).strip()
-    ssid = (field[6] >> 1) & 0x0F
-    is_last = bool(field[6] & 0x01)
-    return call, ssid, is_last
+def safe_ascii(data: bytes) -> str:
+    """Render bytes as text, replacing non-printable bytes with '.'."""
+    return "".join(chr(b) if 32 <= b < 127 else "." for b in data)
 
 
-def parse_ax25_source(frame: bytes):
-    """Extract (source_callsign, source_ssid) from a raw AX.25 frame.
-    Destination occupies bytes 0:7, Source occupies bytes 7:14,
-    regardless of whether repeater addresses follow. Returns None if
-    the frame is too short to contain a valid header.
+def parse_arica2_frame(ax25: bytes):
+    """Parse ARICA-2's confirmed hybrid frame layout (see the main repo
+    README's "Frame format" section) -- NOT standard AX.25 addressing:
+
+        ax25[0:5]   destination: 5 raw bytes, AX.25 <<1 shift, NO SSID
+                    byte (unlike standard AX.25's 7-byte address fields)
+        ax25[5:11]  source: 6 bytes, AX.25 <<1 shift
+        ax25[11]    source SSID byte (standard AX.25 SSID byte format)
+        ax25[12]    Control (0x03 for UI frames)
+        ax25[13]    PID (0xF0, no layer 3)
+        ax25[14:]   info text
+
+    A generic standard-AX.25 parser (7-byte dest + 7-byte src = 14
+    bytes before Control) reads 2 bytes too far and will never
+    correctly extract ARICA-2's source callsign -- this is why an
+    earlier version of this script never matched any real frames.
+
+    Returns (dest_call, src_call, info_text), or None if too short.
     """
-    if len(frame) < 14:
+    if len(ax25) < 14:
         return None
-    src_call, src_ssid, _ = parse_ax25_addr(frame[7:14])
-    return src_call, src_ssid
+    dest_call = "".join(chr(b >> 1) for b in ax25[0:5]).strip(" \x00")
+    src_call = "".join(chr(b >> 1) for b in ax25[5:11]).strip(" \x00")
+    info_text = safe_ascii(ax25[14:])
+    return dest_call, src_call, info_text
 
 
 def build_sids_payload(norad_id: int, source_callsign: str, frame: bytes,
@@ -232,27 +244,28 @@ def main() -> None:
                     continue  # not a data frame
 
                 ts = time.strftime("%H:%M:%S")
-                parsed = parse_ax25_source(ax25)
+                parsed = parse_arica2_frame(ax25)
                 if parsed is None:
                     if args.verbose:
-                        print(f"[{ts}] [skip] frame too short to parse AX.25 header "
+                        print(f"[{ts}] [skip] frame too short to parse ARICA-2 header "
                               f"({len(ax25)} bytes)")
                     continue
 
-                src_call, src_ssid = parsed
-                src_label = f"{src_call}-{src_ssid}" if src_ssid else src_call
+                dest_call, src_call, info_text = parsed
 
                 if sat_call is not None:
                     if src_call.upper() != sat_call:
                         if args.verbose:
-                            print(f"[{ts}] [skip] {src_label} (not {sat_call}) -- not forwarding")
+                            print(f"[{ts}] [skip] {src_call} (not {sat_call}) -- not forwarding")
                         continue
                 elif src_call.upper() in my_calls:
                     if args.verbose:
-                        print(f"[{ts}] [skip] {src_label} (own uplink) -- not forwarding")
+                        print(f"[{ts}] [skip] {src_call} (own uplink) -- not forwarding")
                     continue
 
-                print(f"[{ts}] downlink frame from {src_label}, {len(ax25)} bytes")
+                print(f"[{ts}] downlink frame from {src_call}, {len(ax25)} bytes")
+                print(f"           hex:  {ax25.hex().upper()}")
+                print(f"           text: {src_call}>{dest_call}:{info_text}")
 
                 if args.dry_run:
                     continue
