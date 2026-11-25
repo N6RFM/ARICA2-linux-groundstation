@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Confirmed (external):** a different operator (K4KDR) independently
+  decoded a downlink frame on the SatNOGS community forum and found the
+  same compact 5-byte-no-SSID destination address structure documented
+  here for N6RFM. No code change — this corroborates the existing
+  decoder with a second, independently-sourced callsign. Still open:
+  both confirmed data points are 5-character callsigns, so field width
+  for other lengths remains untested.
 - **Fixed:** `kiss_frame_dump.py` was documented in the README since 1.1.0
   but had been missed from the actual pushed repo. No functional change
   to the tool itself, just adding the file that should have been there

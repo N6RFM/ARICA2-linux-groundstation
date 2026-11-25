@@ -42,11 +42,6 @@ match, not a guess.
   to Direwolf's KISS port and prints the complete raw hex of every frame
   it sees, for capturing exact bytes when working out frame structure
   (see the note on downlink decoding below).
-- **`satnogs-tools/`** — forward received ARICA-2 downlink frames to SatNOGS
-  DB (via the SiDS protocol), without forwarding your own uplink
-  transmissions. Two tools: one for a live Direwolf KISS feed, one for
-  ingesting a decoder's text log file after the fact. See
-  [satnogs-tools/README.md](satnogs-tools/README.md) for full usage.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
@@ -151,11 +146,19 @@ format (no SSID/extension octet), even though the source field right
 next to it is fully standard AX.25. `arica2_message_v1.2.0.py` decodes
 this as `SRC>DST:info`, e.g. `JS1YSD>N6RFM:saved '' at box: 3`.
 
+**Independently confirmed** by a different operator on the SatNOGS
+community forum: a second 5-character callsign (K4KDR) decoded from a
+real downlink frame also came out as exactly 5 raw bytes with no pad
+byte and no SSID octet, matching N6RFM's frame byte-for-byte in
+structure. This rules out the compact format being an artifact specific
+to one station.
+
 **Not yet confirmed:** whether the 5-byte destination field width holds
-for callsigns other than 5 characters — it fit perfectly here with no
-padding needed, but a shorter or longer callsign hasn't been tested.
-`kiss_frame_dump.py` is included for capturing frames from other
-callsign lengths to settle this.
+for callsigns of OTHER lengths — both confirmed data points so far are
+5-character callsigns, so it's still untested whether a 4- or 6-character
+callsign gets padded, truncated, or sized exactly to fit. `kiss_frame_dump.py`
+is included for capturing frames from a different-length callsign to
+settle this.
 
 **Only Download encodes a slot ID.** Upload, Confirm, and Parrot each use a
 fixed byte 5 value with byte 6 left at `0x00` — none of them has any code
@@ -166,34 +169,6 @@ which of the 20 slots to store an Upload into, and any "message renewed at
 to you after the fact, not something you can request going in. This is why
 `arica2_message_v1.2.0.py` greys out the Message ID field for every command type
 except Download — there's no slot field for it to populate.
-
-## SatNOGS frame forwarding
-
-`satnogs-tools/` contains two scripts for submitting received ARICA-2
-downlink frames to SatNOGS DB, so they show up on the
-[ARICA-2 dashboard](https://dashboard.satnogs.org/d/arica-2) alongside
-other stations' receptions:
-
-- **`arica2_satnogs_forwarder.py`** — connects to Direwolf's live KISS
-  TCP feed and forwards frames in real time.
-- **`arica2_log_to_satnogs.py`** — ingests a decoder's text log file
-  (handles both cleanly decoded `SRC>DST:payload` lines and raw hex
-  dump fallback lines), converting local timestamps to UTC.
-
-Both filter frames by AX.25 source callsign, so your own uplink is
-never forwarded. Key facts baked in as defaults: submit with NORAD ID
-`98329` (SatNOGS DB's catalog ID for ARICA-2 — distinct from its real/
-followed NORAD ID 68796, which is only used for TLE propagation), and
-filter on satellite callsign `JS1YSD`.
-
-```bash
-python3 satnogs-tools/arica2_log_to_satnogs.py \
-    --log-file your.log --norad-id 98329 --source-callsign YOUR_CALL \
-    --tz-name America/New_York --dry-run -v
-```
-
-See [satnogs-tools/README.md](satnogs-tools/README.md) for full usage,
-and run either script with `--help` for all options.
 
 ## Known limitations
 
